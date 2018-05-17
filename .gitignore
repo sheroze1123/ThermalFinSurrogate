@@ -102,3 +102,16 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+.Python
+[Bb]in
+[Ii]nclude
+[Ll]ib
+[Ll]ib64
+[Ll]ocal
+[Mm]an
+[Ss]cripts
+[Tt]cl
+pyvenv.cfg
+.venv
+pip-selfcheck.json
