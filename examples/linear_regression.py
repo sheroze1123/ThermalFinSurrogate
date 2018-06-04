@@ -9,6 +9,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 import numpy
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 rng = numpy.random
 
@@ -86,4 +88,4 @@ with tf.Session() as sess:
     plt.plot(test_X, test_Y, 'bo', label='Testing data')
     plt.plot(train_X, sess.run(W) * train_X + sess.run(b), label='Fitted line')
     plt.legend()
-    plt.show()
+    plt.savefig('linear_regression_fit.png')
