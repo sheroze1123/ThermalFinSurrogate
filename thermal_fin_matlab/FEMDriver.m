@@ -11,7 +11,7 @@ load grids
 % Call FEM for calculating Aq and Fh
 [Aq, Fh] = FEM(coarse);
 
-training_data_pts = 200;
+training_data_pts = 2000;
 muls = zeros(training_data_pts, 6);
 uh_len = length(Fh);
 uhs = zeros(training_data_pts, uh_len);
