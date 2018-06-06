@@ -9,9 +9,10 @@ import pandas as pd
 import pdb
 
 def main(argv):
+    train_ratio = 0.7
     # inputs = np.loadtxt(open("training_data_mul.csv","rb"), delimiter=",")
     outputs_full =  np.loadtxt(open("training_data_uh.csv","rb"), delimiter=",")
-    print(outputs_full.shape)
+    print("Total dataset size of {} with training ratio of {:0.2f}".format(outputs_full.shape[0],train_ratio))
 
     COLUMN_TYPES = collections.OrderedDict([
         ("k1", float),
@@ -23,7 +24,7 @@ def main(argv):
         ])
     # input_df = pd.DataFrame(inputs, columns=input_columns, na_values="?")
     input_df = pd.read_csv("training_data_mul.csv", names=COLUMN_TYPES.keys(), dtype=COLUMN_TYPES, na_values="?")
-    train_x = input_df.sample(frac=0.7)
+    train_x = input_df.sample(frac=train_ratio)
     test_x = input_df.drop(train_x.index)
 
     sampling_indices = [1, 2, 3, 15, 16, 660, 750, 1000, 1250]
@@ -44,6 +45,7 @@ def main(argv):
         return input_fn
 
 
+    #  train_input_fn = tf.estimator.inputs.pandas_input_fn(train_x, y=train_y, batch_size=10, num_epochs=4, shuffle=False)
     train_input_fn = make_dataset(10, train_x, train_y)
     test_input_fn = make_dataset(10, test_x, test_y)
 
@@ -53,12 +55,12 @@ def main(argv):
 
     # pdb.set_trace()
 
-    model = tf.estimator.DNNRegressor(hidden_units=[20, 20], label_dimension=9, feature_columns=feature_columns)
-
+    model = tf.estimator.DNNRegressor(hidden_units=[20, 20, 20, 20], label_dimension=9, feature_columns=feature_columns)
 
     model.train(input_fn=train_input_fn)
 
     eval_result = model.evaluate(input_fn=test_input_fn)
+    print (eval_result)
 
     average_loss = eval_result["average_loss"]
 

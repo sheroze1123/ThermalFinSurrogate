@@ -1,0 +1,3 @@
+Build TensorFlow for AVX2 (May not be necessary if running primarily on cluster)
+Deconvolutional networks for full prediction of uh
+
