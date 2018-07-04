@@ -49,13 +49,45 @@ def main(argv):
     train_input_fn = make_dataset(10, train_x, train_y)
     test_input_fn = make_dataset(10, test_x, test_y)
 
-    # pdb.set_trace()
-
     feature_columns = list(map(lambda x:tf.feature_column.numeric_column(key=x),COLUMN_TYPES.keys()))
 
-    # pdb.set_trace()
+    model = tf.estimator.DNNRegressor(hidden_units=[20, 20, 20, 20], 
+            label_dimension=9, 
+            feature_columns=feature_columns,
+            model_dir='./output',
+            config=tf.contrib.learn.RunConfig(save_checkpoints_secs=0.1))
 
-    model = tf.estimator.DNNRegressor(hidden_units=[20, 20, 20, 20], label_dimension=9, feature_columns=feature_columns)
+    #############################################################
+    # Custom Estimator
+    #############################################################
+
+    #  classifier = tf.estimator.Estimator(
+        #  model_fn=my_model,
+        #  params={
+            #  'feature_columns': feature_columns,
+            #  # Two hidden layers of 10 nodes each.
+            #  'hidden_units': [20, 20, 20, 20],
+            #  # The model must choose between 3 classes.
+            #  'n_classes': 9,
+        #  })
+
+    #  net = tf.feature_column.input_layer(features, params['feature_columns'])
+
+    #  for units in params['hidden_units']:
+        #  net = tf.layers.dense(net, units=units, activation=tf.nn.relu)
+
+    #  logits = tf.layers.dense(net, params['n_classes'], activation=None)
+
+    #  def my_model_fn(features, labels, mode, params):  
+        #  '''
+       #  features - This is batch_features from input_fn
+       #  labels   - This is batch_labels from input_fn
+       #  mode     - An instance of tf.estimator.ModeKeys, see below
+       #  params   - Additional configuration
+        #  '''
+        #  return true
+
+    #############################################################
 
     model.train(input_fn=train_input_fn)
 
