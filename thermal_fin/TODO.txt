@@ -2,7 +2,9 @@ Sampling QoI smartly
 Generation of data in a Bayesian fashion
 Implement custom estimator
     - Relative error loss function
-    - Effect of layer depth/width on estimation
-    - Additional metrics
+Implement inverse solver
 Error model using high fidelity model
+Analysis
+    - Dependence of loss on the architecture
+    - Preventing overfitting
 

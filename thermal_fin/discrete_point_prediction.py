@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import numpy as np
 import tensorflow as tf
@@ -55,7 +51,7 @@ def main(argv):
         return input_fn
 
 
-    #  train_input_fn = tf.estimator.inputs.pandas_input_fn(train_x, y=train_y, batch_size=10, num_epochs=4, shuffle=False)
+    #  train_input_fn = tf.estimator.inputs.pandas_input_fn(x=train_x, y=train_y, batch_size=10, num_epochs=4, shuffle=False)
     train_input_fn = make_dataset(10, train_x, train_y)
     test_input_fn = make_dataset(10, test_x, test_y)
 
@@ -98,8 +94,9 @@ def main(argv):
                                    #  predictions=predicted_classes,
                                    #  name='acc_op')
         #  metrics = {'accuracy': accuracy}
-        metrics = {}
-        #  tf.summary.scalar('accuracy',accuracy[1])
+        mean_loss = tf.metrics.mean(loss)
+        metrics = {'mean_loss':mean_loss}
+        tf.summary.scalar('mean_loss',mean_loss[1])
 
         if mode == tf.estimator.ModeKeys.EVAL:
             return tf.estimator.EstimatorSpec(
@@ -141,8 +138,8 @@ def main(argv):
         plt.savefig("comp_{}.png".format(i))
         plt.cla()
         plt.clf()
-        print ('pred: {}'.format(preds[i]))
-        print ('train_y: {}'.format(train_y))
+        #  print ('pred: {}'.format(preds[i]))
+        #  print ('train_y: {}'.format(train_y))
 
 if __name__ == "__main__":
     # The Estimator periodically generates "INFO" logs; make these logs visible.
