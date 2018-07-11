@@ -3,5 +3,6 @@ Generation of data in a Bayesian fashion
 Implement custom estimator
     - Relative error loss function
     - Effect of layer depth/width on estimation
+    - Additional metrics
 Error model using high fidelity model
 

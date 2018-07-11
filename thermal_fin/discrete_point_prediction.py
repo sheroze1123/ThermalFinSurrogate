@@ -7,6 +7,8 @@ import numpy as np
 import tensorflow as tf
 import pandas as pd
 import pdb
+import matplotlib
+import matplotlib.pyplot as plt
 
 def main(argv):
     train_ratio = 0.7
@@ -28,14 +30,19 @@ def main(argv):
             names=COLUMN_TYPES.keys(), 
             dtype=COLUMN_TYPES, na_values="?")
     train_x = input_df.sample(frac=train_ratio)
+    pred_x = input_df.sample(frac=0.0025)
     test_x = input_df.drop(train_x.index)
 
+    pred_input_fn = tf.estimator.inputs.pandas_input_fn(x=pred_x, num_epochs=1, shuffle=False)
+
+    # TODO: More sensible sampling
     sampling_indices = [1, 2, 3, 15, 16, 660, 750, 1000, 1250]
     # sampling_indices = [750]
     outputs_sampled_cols = list(map(str,sampling_indices))
     outputs_sampled = outputs_full[:,sampling_indices]
     y_df = pd.DataFrame(outputs_sampled, columns=outputs_sampled_cols)
     train_y = y_df.loc[train_x.index,:]
+    pred_y = y_df.loc[pred_x.index,:]
     test_y = y_df.drop(train_x.index)
 
     def make_dataset(batch_size, x, y):
@@ -83,10 +90,10 @@ def main(argv):
             return tf.estimator.EstimatorSpec(mode, predictions=logits)
 
         # Compute loss
-        #TODO: Smarter loss
+        # TODO: Smarter loss
         loss = tf.losses.mean_squared_error(labels, logits) 
 
-        # Other metrics go here
+        # TODO: Other metrics go here
         #  accuracy = tf.metrics.accuracy(labels=labels,
                                    #  predictions=predicted_classes,
                                    #  name='acc_op')
@@ -123,6 +130,19 @@ def main(argv):
     loss = eval_result["loss"]
 
     print("Loss: {:2.3f}".format(loss))
+
+    preds = list(model.predict(input_fn=pred_input_fn))
+    train_indices = pred_x.index.values
+    for i in range(len(preds)):
+        train_y = pred_y.loc[train_indices[i],:].values
+        plt.plot(train_y)
+        plt.plot(preds[i])
+        plt.legend(["true","NN"])
+        plt.savefig("comp_{}.png".format(i))
+        plt.cla()
+        plt.clf()
+        print ('pred: {}'.format(preds[i]))
+        print ('train_y: {}'.format(train_y))
 
 if __name__ == "__main__":
     # The Estimator periodically generates "INFO" logs; make these logs visible.
