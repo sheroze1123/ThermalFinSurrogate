@@ -117,3 +117,7 @@ pyvenv.cfg
 pip-selfcheck.json
 
 .DS_Store
+
+thermal_fin/output
+examples
+

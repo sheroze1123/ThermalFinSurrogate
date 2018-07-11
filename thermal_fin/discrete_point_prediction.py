@@ -12,7 +12,8 @@ def main(argv):
     train_ratio = 0.7
     # inputs = np.loadtxt(open("training_data_mul.csv","rb"), delimiter=",")
     outputs_full =  np.loadtxt(open("training_data_uh.csv","rb"), delimiter=",")
-    print("Total dataset size of {} with training ratio of {:0.2f}".format(outputs_full.shape[0],train_ratio))
+    print("Total dataset size of {} with training ratio of {:0.2f}".
+            format(outputs_full.shape[0],train_ratio))
 
     COLUMN_TYPES = collections.OrderedDict([
         ("k1", float),
@@ -23,7 +24,9 @@ def main(argv):
         ("k_center", float)
         ])
     # input_df = pd.DataFrame(inputs, columns=input_columns, na_values="?")
-    input_df = pd.read_csv("training_data_mul.csv", names=COLUMN_TYPES.keys(), dtype=COLUMN_TYPES, na_values="?")
+    input_df = pd.read_csv("training_data_mul.csv", 
+            names=COLUMN_TYPES.keys(), 
+            dtype=COLUMN_TYPES, na_values="?")
     train_x = input_df.sample(frac=train_ratio)
     test_x = input_df.drop(train_x.index)
 
@@ -51,41 +54,64 @@ def main(argv):
 
     feature_columns = list(map(lambda x:tf.feature_column.numeric_column(key=x),COLUMN_TYPES.keys()))
 
-    model = tf.estimator.DNNRegressor(hidden_units=[20, 20, 20, 20], 
-            label_dimension=9, 
-            feature_columns=feature_columns,
-            model_dir='./output',
-            config=tf.contrib.learn.RunConfig(save_checkpoints_secs=0.1))
+    #  model = tf.estimator.DNNRegressor(hidden_units=[20, 20, 20, 20], 
+            #  label_dimension=9, 
+            #  feature_columns=feature_columns,
+            #  model_dir='./output',
+            #  config=tf.contrib.learn.RunConfig(save_checkpoints_secs=0.1))
 
     #############################################################
     # Custom Estimator
     #############################################################
 
-    #  classifier = tf.estimator.Estimator(
-        #  model_fn=my_model,
-        #  params={
-            #  'feature_columns': feature_columns,
-            #  # Two hidden layers of 10 nodes each.
-            #  'hidden_units': [20, 20, 20, 20],
-            #  # The model must choose between 3 classes.
-            #  'n_classes': 9,
-        #  })
+    def custom_model(features, labels, mode, params):
+        '''
+        features - This is batch_features from input_fn
+        labels   - This is batch_labels from input_fn
+        mode     - An instance of tf.estimator.ModeKeys, see below
+        params   - Additional configuration
+        '''
 
-    #  net = tf.feature_column.input_layer(features, params['feature_columns'])
+        net = tf.feature_column.input_layer(features, params['feature_columns'])
 
-    #  for units in params['hidden_units']:
-        #  net = tf.layers.dense(net, units=units, activation=tf.nn.relu)
+        for units in params['hidden_units']:
+            net = tf.layers.dense(net, units=units, activation=tf.nn.relu)
 
-    #  logits = tf.layers.dense(net, params['n_classes'], activation=None)
+        logits = tf.layers.dense(net, params['n_classes'], activation=None)
 
-    #  def my_model_fn(features, labels, mode, params):  
-        #  '''
-       #  features - This is batch_features from input_fn
-       #  labels   - This is batch_labels from input_fn
-       #  mode     - An instance of tf.estimator.ModeKeys, see below
-       #  params   - Additional configuration
-        #  '''
-        #  return true
+        if mode == tf.estimator.ModeKeys.PREDICT:
+            return tf.estimator.EstimatorSpec(mode, predictions=logits)
+
+        # Compute loss
+        #TODO: Smarter loss
+        loss = tf.losses.mean_squared_error(labels, logits) 
+
+        # Other metrics go here
+        #  accuracy = tf.metrics.accuracy(labels=labels,
+                                   #  predictions=predicted_classes,
+                                   #  name='acc_op')
+        #  metrics = {'accuracy': accuracy}
+        metrics = {}
+        #  tf.summary.scalar('accuracy',accuracy[1])
+
+        if mode == tf.estimator.ModeKeys.EVAL:
+            return tf.estimator.EstimatorSpec(
+                mode, loss=loss, eval_metric_ops=metrics)
+
+        optimizer = tf.train.AdagradOptimizer(learning_rate=0.1)
+        train_op = optimizer.minimize(loss, global_step=tf.train.get_global_step())
+        return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op)
+
+
+    model = tf.estimator.Estimator(
+            model_fn=custom_model,
+            model_dir='./output',
+            config=tf.contrib.learn.RunConfig(save_checkpoints_secs=0.1),
+            params={
+                'feature_columns': feature_columns,
+                'hidden_units': [20,20,20,20],
+                'n_classes':9
+            })
 
     #############################################################
 
@@ -94,9 +120,9 @@ def main(argv):
     eval_result = model.evaluate(input_fn=test_input_fn)
     print (eval_result)
 
-    average_loss = eval_result["average_loss"]
+    loss = eval_result["loss"]
 
-    print("Loss: {:2.3f}".format(average_loss))
+    print("Loss: {:2.3f}".format(loss))
 
 if __name__ == "__main__":
     # The Estimator periodically generates "INFO" logs; make these logs visible.
