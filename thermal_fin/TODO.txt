@@ -7,4 +7,9 @@ Error model using high fidelity model
 Analysis
     - Dependence of loss on the architecture
     - Preventing overfitting
+Known Oversights:
+    - Currently, the temp dist is interpolated to a full 2D grid. This wastes input space as the fin
+      itself has a specific geometry. The reasoning for the full 2D grid is to work with CNNs better. 
+      It may be a separate project to write a CNN with a non-standard geometry.
+      (https://www.cv-foundation.org/openaccess/content_cvpr_2015/papers/Dai_Convolutional_Feature_Masking_2015_CVPR_paper.pdf)
 

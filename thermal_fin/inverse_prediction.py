@@ -20,30 +20,55 @@ def main(argv):
     # inputs = np.loadtxt(open("training_data_mul.csv","rb"), delimiter=",")
     #  outputs_full = np.loadtxt(open("training_data_uh.csv", "rb"), delimiter=",")
     #  print("Total dataset size of {} with training ratio of {:0.2f}".
-          #  format(outputs_full.shape[0], train_ratio))
-    Aq_s, Fh, nodes, coor, theta_tri = load_FEM()
+    #  format(outputs_full.shape[0], train_ratio))
+    solver = ForwardSolver(500, 500)
     params = np.array([rand()*8, rand()*8, rand()*8, rand()*8, 1, rand()*2])
+    uh = solver.solve(params)
+    #  solver.plot_solution(uh, 'test.png')
 
-    Ah = coo_matrix((nodes,nodes))
-    for param, Aq in zip(params, Aq_s):
-        Ah = Ah + param * Aq
 
-    uh = spsolve(Ah, Fh)
+class ForwardSolver:
+    def __init__(self, grid_x, grid_y):
+        x = np.linspace(-3.0, 3.0, grid_x)
+        y = np.linspace(0.0, 4.0, grid_y)
+        self.xx, self.yy = np.meshgrid(x, y)
+        self.Aq_s, self.Fh, self.nodes, self.coor, self.theta_tri = load_FEM()
 
-    triangulation = tri.Triangulation(coor[:,0], coor[:,1], theta_tri)
-    plt.tripcolor(triangulation, uh)
-    plt.colorbar()
-    plt.savefig("plots/uh.png", dpi=400)
-    print("Solution written to plots/uh.png")
+    def solve(self, params):
+        '''
+        Performs a forward solve with the given parameters and returns
+        a 2D matrix representing the temperature distribution of a thermal fin
 
-    interpolator = tri.CubicTriInterpolator(triangulation, uh)
-    nx, ny = (400, 400)
-    x = np.linspace(-3.0, 3.0, nx)
-    y = np.linspace(0.0, 4.0, ny)
-    xx, yy = np.meshgrid(x,y)
-    zz = interpolator(xx, yy)
-    plt.pcolor(xx, yy, zz)
-    plt.savefig("plots/interpolated_uh.png", dpi=400)
+        Arguments:
+            params: Array of conductivities [k1, k2, k3, k4, Biot, k5]
+
+        Returns
+            theta : Temperature distribution on a grid, x ∈ [-3, 3] and y ∈ [0, 4]  
+        '''
+
+        Ah = coo_matrix((self.nodes, self.nodes))
+        for param, Aq in zip(params, self.Aq_s):
+            Ah = Ah + param * Aq
+
+        uh = spsolve(Ah, self.Fh)
+
+        triangulation = tri.Triangulation(
+            self.coor[:, 0], self.coor[:, 1], self.theta_tri)
+        #  plt.tripcolor(triangulation, uh)
+        #  plt.colorbar()
+        #  plt.savefig("plots/uh.png", dpi=400)
+        #  print("Solution written to plots/uh.png")
+
+        interpolator = tri.CubicTriInterpolator(triangulation, uh)
+        uh_interpolated = interpolator(self.xx, self.yy)
+
+        return uh_interpolated
+
+    def plot_solution(self, uh_interpolated, filepath):
+        pl = plt.pcolormesh(self.xx, self.yy, uh_interpolated,linewidth=0, rasterized=True)
+        pl.set_edgecolor('face')
+        plt.savefig(filepath, dpi=400)
+
 
 
 def load_FEM():
@@ -65,14 +90,17 @@ def load_FEM():
     data_dir = 'matlab_data/'
     Fh = np.loadtxt(data_dir + 'Fh.csv')
     nodes = Fh.shape[0]
-    coor = np.loadtxt(data_dir + 'coarse_coor.csv',delimiter=',')
-    theta_tri = np.loadtxt(data_dir + 'theta_tri.csv', delimiter=",", unpack=True)
-    for i in range(1,7):
-        col, row, value = np.loadtxt(data_dir + 'Aq' + str(i) + '.csv', delimiter="\t", unpack=True)
+    coor = np.loadtxt(data_dir + 'coarse_coor.csv', delimiter=',')
+    theta_tri = np.loadtxt(data_dir + 'theta_tri.csv',
+                           delimiter=",", unpack=True)
+    for i in range(1, 7):
+        col, row, value = np.loadtxt(
+            data_dir + 'Aq' + str(i) + '.csv', delimiter="\t", unpack=True)
         Aq = coo_matrix((value, (row-1, col-1)), shape=(nodes, nodes))
         Aq_s.append(Aq)
 
     return Aq_s, Fh, nodes, coor, (theta_tri-1).T
+
 
 def cnn_model(features, labels, mode, params):
     '''
@@ -146,6 +174,7 @@ def cnn_model(features, labels, mode, params):
 
     return tf.estimator.EstimatorSpec(
         mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
+
 
 if __name__ == "__main__":
     # The Estimator periodically generates "INFO" logs; make these logs visible.
