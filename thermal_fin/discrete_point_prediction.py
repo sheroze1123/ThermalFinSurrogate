@@ -1,9 +1,12 @@
-import collections
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from collections import OrderedDict
 import numpy as np
 import tensorflow as tf
-import pandas as pd
+from pandas import DataFrame, read_csv
 import pdb
-import matplotlib
 import matplotlib.pyplot as plt
 
 def main(argv):
@@ -13,7 +16,7 @@ def main(argv):
     print("Total dataset size of {} with training ratio of {:0.2f}".
             format(outputs_full.shape[0],train_ratio))
 
-    COLUMN_TYPES = collections.OrderedDict([
+    COLUMN_TYPES = OrderedDict([
         ("k1", float),
         ("k2", float),
         ("k3", float),
@@ -21,8 +24,8 @@ def main(argv):
         ("Biot", float),
         ("k_center", float)
         ])
-    # input_df = pd.DataFrame(inputs, columns=input_columns, na_values="?")
-    input_df = pd.read_csv("training_data_mul.csv", 
+    # input_df = DataFrame(inputs, columns=input_columns, na_values="?")
+    input_df = read_csv("training_data_mul.csv", 
             names=COLUMN_TYPES.keys(), 
             dtype=COLUMN_TYPES, na_values="?")
     train_x = input_df.sample(frac=train_ratio)
@@ -36,7 +39,7 @@ def main(argv):
     # sampling_indices = [750]
     outputs_sampled_cols = list(map(str,sampling_indices))
     outputs_sampled = outputs_full[:,sampling_indices]
-    y_df = pd.DataFrame(outputs_sampled, columns=outputs_sampled_cols)
+    y_df = DataFrame(outputs_sampled, columns=outputs_sampled_cols)
     train_y = y_df.loc[train_x.index,:]
     pred_y = y_df.loc[pred_x.index,:]
     test_y = y_df.drop(train_x.index)
