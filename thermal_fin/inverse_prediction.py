@@ -31,11 +31,19 @@ def main(argv):
     uh = spsolve(Ah, Fh)
 
     triangulation = tri.Triangulation(coor[:,0], coor[:,1], theta_tri)
-    interpolator = tri.CubicTriInterpolator(triangulation, uh)
     plt.tripcolor(triangulation, uh)
     plt.colorbar()
     plt.savefig("plots/uh.png", dpi=400)
     print("Solution written to plots/uh.png")
+
+    interpolator = tri.CubicTriInterpolator(triangulation, uh)
+    nx, ny = (400, 400)
+    x = np.linspace(-3.0, 3.0, nx)
+    y = np.linspace(0.0, 4.0, ny)
+    xx, yy = np.meshgrid(x,y)
+    zz = interpolator(xx, yy)
+    plt.pcolor(xx, yy, zz)
+    plt.savefig("plots/interpolated_uh.png", dpi=400)
 
 
 def load_FEM():
