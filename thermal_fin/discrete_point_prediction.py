@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 def main(argv):
     train_ratio = 0.7
     # inputs = np.loadtxt(open("training_data_mul.csv","rb"), delimiter=",")
-    outputs_full =  np.loadtxt(open("training_data_uh.csv","rb"), delimiter=",")
+    outputs_full =  np.loadtxt(open("matlab_data/training_data_uh.csv","rb"), delimiter=",")
     print("Total dataset size of {} with training ratio of {:0.2f}".
             format(outputs_full.shape[0],train_ratio))
 
@@ -25,7 +25,7 @@ def main(argv):
         ("k_center", float)
         ])
     # input_df = DataFrame(inputs, columns=input_columns, na_values="?")
-    input_df = read_csv("training_data_mul.csv", 
+    input_df = read_csv("matlab_data/training_data_mul.csv", 
             names=COLUMN_TYPES.keys(), 
             dtype=COLUMN_TYPES, na_values="?")
     train_x = input_df.sample(frac=train_ratio)
