@@ -13,31 +13,31 @@ from time import time
 
 
 def main(argv):
-    train_ratio = 0.7
-    dataset_size = 1000
+    #  train_ratio = 0.7
+    #  dataset_size = 1000
     # inputs = np.loadtxt(open("training_data_mul.csv","rb"), delimiter=",")
     #  outputs_full = np.loadtxt(open("training_data_uh.csv", "rb"), delimiter=",")
     #  print("Total dataset size of {} with training ratio of {:0.2f}".
     #  format(outputs_full.shape[0], train_ratio))
 
-    solve_start = time()
+    #  solve_start = time()
 
     grid_x = 400
     grid_y = 400
-    solver = ForwardSolver(grid_x, grid_y)
-    uh_s = []
-    fin_params = []
+    solver = ForwardSolver(grid_x, grid_y, 10)
+    #  uh_s = []
+    #  fin_params = []
 
-    for i in range(dataset_size):
-        fin_param = np.array(
-            [rand()*8, rand()*8, rand()*8, rand()*8, 1, rand()*2])
-        uh = solver.solve(fin_param)
-        uh_s.append(uh)
-        fin_params.append(fin_param)
+    #  for i in range(dataset_size):
+        #  fin_param = np.array(
+            #  [rand()*8, rand()*8, rand()*8, rand()*8, 1, rand()*2])
+        #  uh = solver.solve(fin_param)
+        #  uh_s.append(uh)
+        #  fin_params.append(fin_param)
 
-    solve_end = time()
-    print("\nGenerated dataset of size {} with grid size {} x {} in {} seconds\n".format(
-        dataset_size, grid_x, grid_y, solve_end - solve_start))
+    #  solve_end = time()
+    #  print("\nGenerated dataset of size {} with grid size {} x {} in {} seconds\n".format(
+        #  dataset_size, grid_x, grid_y, solve_end - solve_start))
 
     config = tf.estimator.RunConfig(save_summary_steps=10, model_dir='inverse_output')
 
@@ -48,15 +48,16 @@ def main(argv):
         params={"fin_params": 6, "grid_x": grid_x, "grid_y": grid_y})
     logging_hook = tf.train.LoggingTensorHook(
         tensors={"loss_c": "l2_loss"}, every_n_iter=5)
-    train_input_fn = tf.estimator.inputs.numpy_input_fn(
-        x={"x": np.array(uh_s)},
-        y=np.array(fin_params),
-        batch_size=10,
-        num_epochs=None,
-        shuffle=True)
-    inverse_regressor.train(input_fn=train_input_fn,
-                            steps=80, hooks=[logging_hook])
-
+    #  train_input_fn = tf.estimator.inputs.numpy_input_fn(
+        #  x={"x": np.array(uh_s)},
+        #  y=np.array(fin_params),
+        #  batch_size=10,
+        #  num_epochs=None,
+        #  shuffle=True)
+    #  inverse_regressor.train(input_fn=train_input_fn,
+                            #  steps=80, hooks=[logging_hook])
+    inverse_regressor.train(input_fn=solver.input_fn,
+                            steps=200, hooks=[logging_hook])
 
 def cnn_model(features, labels, mode, params):
     '''
@@ -116,7 +117,7 @@ def cnn_model(features, labels, mode, params):
 
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.01)
         train_op = optimizer.minimize(
             loss=loss,
             global_step=tf.train.get_global_step())

@@ -4,14 +4,19 @@ from scipy.interpolate import griddata, LinearNDInterpolator
 from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import spsolve
 from matplotlib import pyplot as plt
+from numpy.random import rand
+import tensorflow as tf
 
 class ForwardSolver:
-    def __init__(self, grid_x, grid_y):
+    def __init__(self, grid_x, grid_y, batch_size):
         x = np.linspace(-3.0, 3.0, grid_x)
         y = np.linspace(0.0, 4.0, grid_y)
         self.xx, self.yy = np.meshgrid(x, y)
         self.Aq_s, self.Fh, self.nodes, coor, theta_tri = self.load_FEM()
         self.triangulation = tri.Triangulation(coor[:, 0], coor[:, 1], theta_tri)
+        self.batch_size = batch_size
+        self.grid_x = grid_x
+        self.grid_y = grid_y
 
     def solve(self, params):
         '''
@@ -34,6 +39,14 @@ class ForwardSolver:
         uh_interpolated = interpolator(self.xx, self.yy)
 
         return np.ma.fix_invalid(uh_interpolated, fill_value = 0.0).data
+
+    def input_fn(self):
+        fin_params = np.zeros((self.batch_size, 6))
+        uh_s = np.zeros((self.batch_size, self.grid_x, self.grid_y))
+        for i in range(self.batch_size):
+            fin_params[i,:] = [rand()*8, rand()*8, rand()*8, rand()*8, 1, rand()*2]
+            uh_s[i,:,:] = self.solve(fin_params[i,:])
+        return ({'x':tf.convert_to_tensor(uh_s)}, tf.convert_to_tensor(fin_params))
 
     def load_FEM(self):
         '''

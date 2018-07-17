@@ -14,3 +14,10 @@ Known Oversights:
       (https://www.cv-foundation.org/openaccess/content_cvpr_2015/papers/Dai_Convolutional_Feature_Masking_2015_CVPR_paper.pdf)
 Known bugs:
     - Plotting of the forward solver introduces gray lines
+
+Urgent implementation
+    - Measure time taken for training
+    - Evalutate CNN with testing set
+    - Change CNN architecture
+    - Write predictor for inverse
+    - GPU implementation 

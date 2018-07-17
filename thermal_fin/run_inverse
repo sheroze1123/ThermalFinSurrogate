@@ -1,0 +1,3 @@
+#!/bin/bash
+[ -e inverse_output ] && rm -r inverse_output
+python inverse_prediction.py
