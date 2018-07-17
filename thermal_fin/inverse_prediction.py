@@ -57,7 +57,10 @@ def main(argv):
     #  inverse_regressor.train(input_fn=train_input_fn,
                             #  steps=80, hooks=[logging_hook])
     inverse_regressor.train(input_fn=solver.input_fn,
-                            steps=200, hooks=[logging_hook])
+                            steps=20, hooks=[logging_hook])
+
+    eval_result = inverse_regressor.evaluate(input_fn=solver.input_fn, steps=10)
+    print(eval_result)
 
 def cnn_model(features, labels, mode, params):
     '''

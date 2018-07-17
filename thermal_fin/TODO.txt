@@ -21,3 +21,5 @@ Urgent implementation
     - Change CNN architecture
     - Write predictor for inverse
     - GPU implementation 
+    - Implement average loss and other metrics
+    - Better way to get a sense of the error
