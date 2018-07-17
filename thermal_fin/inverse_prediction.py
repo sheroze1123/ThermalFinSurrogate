@@ -7,97 +7,56 @@ import numpy as np
 import tensorflow as tf
 from pandas import DataFrame, read_csv
 import pdb
-import matplotlib.pyplot as plt
-from scipy.sparse import coo_matrix
-from scipy.sparse.linalg import spsolve
-from matplotlib import tri, cm
 from numpy.random import rand
-from scipy.interpolate import griddata, LinearNDInterpolator
+from forward_solver import ForwardSolver
+from time import time
 
 
 def main(argv):
     train_ratio = 0.7
+    dataset_size = 1000
     # inputs = np.loadtxt(open("training_data_mul.csv","rb"), delimiter=",")
     #  outputs_full = np.loadtxt(open("training_data_uh.csv", "rb"), delimiter=",")
     #  print("Total dataset size of {} with training ratio of {:0.2f}".
     #  format(outputs_full.shape[0], train_ratio))
-    solver = ForwardSolver(500, 500)
-    params = np.array([rand()*8, rand()*8, rand()*8, rand()*8, 1, rand()*2])
-    uh = solver.solve(params)
+
+    solve_start = time()
+
+    grid_x = 400
+    grid_y = 400
+    solver = ForwardSolver(grid_x, grid_y)
+    uh_s = []
+    fin_params = []
+
+    for i in range(dataset_size):
+        fin_param = np.array(
+            [rand()*8, rand()*8, rand()*8, rand()*8, 1, rand()*2])
+        uh = solver.solve(fin_param)
+        uh_s.append(uh)
+        fin_params.append(fin_param)
+
+    solve_end = time()
+    print("\nGenerated dataset of size {} with grid size {} x {} in {} seconds\n".format(
+        dataset_size, grid_x, grid_y, solve_end - solve_start))
+
+    config = tf.estimator.RunConfig(save_summary_steps=10, model_dir='inverse_output')
+
     #  solver.plot_solution(uh, 'test.png')
+    inverse_regressor = tf.estimator.Estimator(
+        config = config,
+        model_fn=cnn_model, 
+        params={"fin_params": 6, "grid_x": grid_x, "grid_y": grid_y})
+    logging_hook = tf.train.LoggingTensorHook(
+        tensors={"loss_c": "l2_loss"}, every_n_iter=5)
+    train_input_fn = tf.estimator.inputs.numpy_input_fn(
+        x={"x": np.array(uh_s)},
+        y=np.array(fin_params),
+        batch_size=10,
+        num_epochs=None,
+        shuffle=True)
+    inverse_regressor.train(input_fn=train_input_fn,
+                            steps=80, hooks=[logging_hook])
 
-
-class ForwardSolver:
-    def __init__(self, grid_x, grid_y):
-        x = np.linspace(-3.0, 3.0, grid_x)
-        y = np.linspace(0.0, 4.0, grid_y)
-        self.xx, self.yy = np.meshgrid(x, y)
-        self.Aq_s, self.Fh, self.nodes, self.coor, self.theta_tri = self.load_FEM()
-
-    def solve(self, params):
-        '''
-        Performs a forward solve with the given parameters and returns
-        a 2D matrix representing the temperature distribution of a thermal fin
-
-        Arguments:
-            params: Array of conductivities [k1, k2, k3, k4, Biot, k5]
-
-        Returns
-            theta : Temperature distribution on a grid, x ∈ [-3, 3] and y ∈ [0, 4]  
-        '''
-
-        Ah = coo_matrix((self.nodes, self.nodes))
-        for param, Aq in zip(params, self.Aq_s):
-            Ah = Ah + param * Aq
-
-        uh = spsolve(Ah, self.Fh)
-
-        triangulation = tri.Triangulation(
-            self.coor[:, 0], self.coor[:, 1], self.theta_tri)
-        #  plt.tripcolor(triangulation, uh)
-        #  plt.colorbar()
-        #  plt.savefig("plots/uh.png", dpi=400)
-        #  print("Solution written to plots/uh.png")
-
-        interpolator = tri.CubicTriInterpolator(triangulation, uh)
-        uh_interpolated = interpolator(self.xx, self.yy)
-
-        return uh_interpolated
-
-    def load_FEM(self):
-        '''
-        Loads the FEM matrices in sparse format for the forward solve
-        Only 6 RHS matrices corresponding to the parameters loaded currently.
-        Data generated from MATLAB, so the indices need to be subtracted by 1.
-
-        Returns:
-            Aq_s : Array of Aq sparse matrices each with dimension (nodes,nodes)
-            Fh   : Load vector for FEM with dimension (nodes,1)
-            nodes: Number of FEM nodes 
-            coor: coordinates for plottting
-            theta_tri: coordinate indices for the triangulation with dimension (triangles, 3)
-        '''
-
-        Aq_s = []
-
-        data_dir = 'matlab_data/'
-        Fh = np.loadtxt(data_dir + 'Fh.csv')
-        nodes = Fh.shape[0]
-        coor = np.loadtxt(data_dir + 'coarse_coor.csv', delimiter=',')
-        theta_tri = np.loadtxt(data_dir + 'theta_tri.csv',
-                               delimiter=",", unpack=True)
-        for i in range(1, 7):
-            col, row, value = np.loadtxt(
-                data_dir + 'Aq' + str(i) + '.csv', delimiter="\t", unpack=True)
-            Aq = coo_matrix((value, (row-1, col-1)), shape=(nodes, nodes))
-            Aq_s.append(Aq)
-
-        return Aq_s, Fh, nodes, coor, (theta_tri-1).T
-
-    def plot_solution(self, uh_interpolated, filepath):
-        pl = plt.pcolormesh(self.xx, self.yy, uh_interpolated, linewidth=0.0, rasterized=True)
-        pl.set_edgecolor('face')
-        plt.savefig(filepath, dpi=400)
 
 def cnn_model(features, labels, mode, params):
     '''
@@ -110,18 +69,19 @@ def cnn_model(features, labels, mode, params):
     # input_layer shape = [batch_size, height, width, channels]
     # -1 for batch size, which specifies that this dimension should be dynamically
     # computed based on the number of input values in features["x"]
-    input_layer = tf.reshape(features["x"], [-1, 125, 125, 1])
+    input_layer = tf.reshape(features["x"], [-1, params["grid_x"], params["grid_y"], 1])
 
     # Convolutional Layer #1
     conv1 = tf.layers.conv2d(
         inputs=input_layer,
         filters=32,
-        kernel_size=[5, 5],
+        kernel_size=[8, 8],
         padding="same",
         activation=tf.nn.relu)
-
     # Pooling Layer #1
-    pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[2, 2], strides=2)
+    pool1 = tf.layers.max_pooling2d(
+        inputs=conv1, pool_size=[10, 10], strides=10)
+    # Output of pool1 is of dim [batch_size, 40, 40, 32]
 
     # Convolutional Layer #2 and Pooling Layer #2
     conv2 = tf.layers.conv2d(
@@ -130,31 +90,29 @@ def cnn_model(features, labels, mode, params):
         kernel_size=[5, 5],
         padding="same",
         activation=tf.nn.relu)
-    pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[2, 2], strides=2)
+    pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[5, 5], strides=5)
+    # Output of pool2 is of dim [batch_size, 8, 8, 64]
 
     # Dense Layer with dropout
-    pool2_flat = tf.reshape(pool2, [-1, 7 * 7 * 64])
+    dim_x = int(params["grid_x"]/50)
+    dim_y = int(params["grid_y"]/50)
+    pool2_flat = tf.reshape(pool2, [-1, dim_x * dim_y * 64])
     dense = tf.layers.dense(
         inputs=pool2_flat, units=1024, activation=tf.nn.relu)
     dropout = tf.layers.dropout(
         inputs=dense, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
 
     # Logits Layer
-    logits = tf.layers.dense(inputs=dropout, units=10)
-
-    predictions = {
-        # Generate predictions (for PREDICT and EVAL mode)
-        "classes": tf.argmax(input=logits, axis=1),
-        # Add `softmax_tensor` to the graph. It is used for PREDICT and by the
-        # `logging_hook`.
-        "probabilities": tf.nn.softmax(logits, name="softmax_tensor")
-    }
+    logits = tf.layers.dense(inputs=dropout, units=params["fin_params"])
 
     if mode == tf.estimator.ModeKeys.PREDICT:
-        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+        return tf.estimator.EstimatorSpec(mode=mode, predictions=logits)
 
+    # TODO: rewrite this with forwad solve loss
     # Calculate Loss (for both TRAIN and EVAL modes)
-    loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
+    #  loss = tf.losses.mean_squared_error(labels, logits, name="l2_loss")
+    loss = tf.reduce_mean(tf.squared_difference(
+        labels, logits), name='l2_loss')
 
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
@@ -165,9 +123,10 @@ def cnn_model(features, labels, mode, params):
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
     # Add evaluation metrics (for EVAL mode)
-    eval_metric_ops = {
-        "accuracy": tf.metrics.accuracy(
-            labels=labels, predictions=predictions["classes"])}
+    #  eval_metric_ops = {
+        #  "accuracy": tf.metrics.accuracy(
+        #  labels=labels, predictions=logits)}
+    eval_metric_ops = {}
 
     return tf.estimator.EstimatorSpec(
         mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
