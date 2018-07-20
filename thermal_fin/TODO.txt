@@ -1,17 +1,13 @@
-Sampling QoI smartly
-Generation of data in a Bayesian fashion
-Implement custom estimator
-    - Relative error loss function
-Implement inverse solver
-Error model using high fidelity model
 Analysis
     - Dependence of loss on the architecture
     - Preventing overfitting
+
 Known Oversights:
     - Currently, the temp dist is interpolated to a full 2D grid. This wastes input space as the fin
       itself has a specific geometry. The reasoning for the full 2D grid is to work with CNNs better. 
       It may be a separate project to write a CNN with a non-standard geometry.
       (https://www.cv-foundation.org/openaccess/content_cvpr_2015/papers/Dai_Convolutional_Feature_Masking_2015_CVPR_paper.pdf)
+
 Known bugs:
     - Plotting of the forward solver introduces gray lines
 
@@ -19,7 +15,17 @@ Urgent implementation
     - Measure time taken for training
     - Evalutate CNN with testing set
     - Change CNN architecture
-    - Write predictor for inverse
     - GPU implementation 
     - Implement average loss and other metrics
+    - Write per param error analysis
     - Better way to get a sense of the error
+
+Research
+    - Rewrite convolution using FEM theory
+    - Train only specific fins. (5 separate CNNs for each parameter)
+    - Research more about FEM inverse solves using NN (focused lit review)
+    - Error model using high fidelity model (fine mesh Solves)
+    - Sampling QoI smartly
+    - Generation of data in a Bayesian fashion
+    - DNN approach for nodal values
+    - PyTorch?

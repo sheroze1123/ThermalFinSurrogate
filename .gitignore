@@ -124,3 +124,4 @@ examples
 *.png
 nohup.out
 thermal_fin_matlab/*.csv
+thermal_fin/inverse_output/
