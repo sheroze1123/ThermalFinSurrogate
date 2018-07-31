@@ -11,6 +11,7 @@ from forward_solver import ForwardSolver
 from time import time
 
 
+
 def main(argv):
     grid_x      = tf.flags.FLAGS.grid_x
     grid_y      = tf.flags.FLAGS.grid_y
@@ -27,7 +28,7 @@ def main(argv):
 
     inverse_regressor = tf.estimator.Estimator(
         config = config,
-        model_fn=cnn_model, 
+        model_fn=cnn_model_no_pooling,
         params={"fin_params": 6, "grid_x": grid_x, "grid_y": grid_y, "solver":solver})
 
     inverse_regressor.train(input_fn=solver.train_input_fn,
@@ -74,8 +75,8 @@ def cnn_model(features, labels, mode, params):
         activation=tf.nn.relu)
     # Pooling Layer #1
     pool1 = tf.layers.max_pooling2d(
-        inputs=conv1, pool_size=[4, 4], strides=4)
-    # Output of pool1 is of dim [batch_size, 100, 100, 32]
+        inputs=conv1, pool_size=[4, 4], strides=2)
+    # Output of pool1 is of dim [batch_size, 200, 200, 32]
 
     # Convolutional Layer #2 and Pooling Layer #2
     conv2 = tf.layers.conv2d(
@@ -84,8 +85,8 @@ def cnn_model(features, labels, mode, params):
         kernel_size=[4, 4],
         padding="same",
         activation=tf.nn.relu)
-    pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[4, 4], strides=4)
-    # Output of pool2 is of dim [batch_size, 25, 25, 32]
+    pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[4, 4], strides=2)
+    # Output of pool2 is of dim [batch_size, 100, 100, 32]
 
     # Convolutional Layer #3 and Pooling Layer #3
     conv3 = tf.layers.conv2d(
@@ -94,7 +95,7 @@ def cnn_model(features, labels, mode, params):
         kernel_size=[5, 5],
         padding="same",
         activation=tf.nn.relu)
-    pool3 = tf.layers.max_pooling2d(inputs=conv3, pool_size=[5, 5], strides=5)
+    pool3 = tf.layers.max_pooling2d(inputs=conv3, pool_size=[4, 4], strides=2)
     # Output of pool2 is of dim [batch_size, 5, 5, 32]
 
 
