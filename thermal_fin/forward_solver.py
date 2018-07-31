@@ -29,6 +29,7 @@ class ForwardSolver:
         '''
         Performs a forward solve with the given parameters and returns
         a 2D matrix representing the temperature distribution of a thermal fin
+        with values interpolated from a finite element grid
 
         Arguments:
             params: Array of conductivities [k1, k2, k3, k4, Biot, k5]
@@ -46,6 +47,25 @@ class ForwardSolver:
         uh_interpolated = interpolator(self.xx, self.yy)
 
         return np.ma.fix_invalid(uh_interpolated, fill_value = 0.0).data
+
+    def solve_noiterp(self, params):
+        '''
+        Performs a forward solve with the given parameters and returns
+        a vector of nodal values of a finite element discretization of 
+        the temperature distribution of a thermal fin
+
+        Arguments:
+            params: Array of conductivities [k1, k2, k3, k4, Biot, k5]
+
+        Returns
+            theta : Temperature distribution on a grid, x ∈ [-3, 3] and y ∈ [0, 4]  
+        '''
+        Ah = coo_matrix((self.nodes, self.nodes))
+        for param, Aq in zip(params, self.Aq_s):
+            Ah = Ah + param * Aq
+
+        uh = spsolve(Ah, self.Fh)
+        return uh
 
     #  def tf_solve(self, params):
         #  #  Ah = coo_matrix((self.nodes, self.nodes))

@@ -8,12 +8,9 @@ from pandas import DataFrame, read_csv
 import pdb
 from numpy.random import rand
 from forward_solver import ForwardSolver
-from time import time
 
 
 def main(argv):
-    grid_x      = tf.flags.FLAGS.grid_x
-    grid_y      = tf.flags.FLAGS.grid_y
     batch_size  = tf.flags.FLAGS.batch_size
     train_steps = tf.flags.FLAGS.train_steps
     eval_steps  = tf.flags.FLAGS.eval_steps
@@ -28,7 +25,7 @@ def main(argv):
     inverse_regressor = tf.estimator.Estimator(
         config = config,
         model_fn=cnn_model, 
-        params={"fin_params": 6, "grid_x": grid_x, "grid_y": grid_y, "solver":solver})
+        params={"fin_params": 6, "solver":solver})
 
     inverse_regressor.train(input_fn=solver.train_input_fn,
                             steps=train_steps, hooks=[logging_hook])
@@ -150,18 +147,8 @@ def cnn_model(features, labels, mode, params):
 
 if __name__ == "__main__":
     # The Estimator periodically generates "INFO" logs; make these logs visible.
-    solve_start = time()
     tf.flags.DEFINE_integer('batch_size', 10, 'Number of images to process in a batch.')
-    tf.flags.DEFINE_integer('grid_x', 400, 'Number of grid points in the x direction.')
-    tf.flags.DEFINE_integer('grid_y', 400, 'Number of grid points in the y direction.')
     tf.flags.DEFINE_integer('train_steps', 400, 'Number of training steps to take.')
     tf.flags.DEFINE_integer('eval_steps', 100, 'Number of evaluation steps to take.')
     tf.logging.set_verbosity(tf.logging.INFO)
     tf.app.run(main=main)
-    solve_end = time()
-    print("\nGenerated and trained with dataset of size {} with grid size {} x {} in {} seconds\n".format(
-        tf.flags.FLAGS.batch_size * tf.flags.FLAGS.train_steps, 
-        tf.flags.FLAGS.grid_x, 
-        tf.flags.FLAGS.grid_y, 
-        solve_end - solve_start))
-
