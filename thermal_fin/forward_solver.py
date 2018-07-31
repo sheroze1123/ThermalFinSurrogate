@@ -8,15 +8,18 @@ from numpy.random import rand
 import tensorflow as tf
 
 class ForwardSolver:
-    def __init__(self, grid_x, grid_y, batch_size):
-        x = np.linspace(-3.0, 3.0, grid_x)
-        y = np.linspace(0.0, 4.0, grid_y)
-        self.xx, self.yy = np.meshgrid(x, y)
+    def __init__(self, batch_size, grid_x=None, grid_y=None):
+
+        self.batch_size = batch_size
         self.Aq_s, self.Fh, self.nodes, coor, theta_tri = self.load_FEM()
         self.triangulation = tri.Triangulation(coor[:, 0], coor[:, 1], theta_tri)
-        self.batch_size = batch_size
         self.grid_x = grid_x
         self.grid_y = grid_y
+
+        if (grid_x is not None):
+            x = np.linspace(-3.0, 3.0, grid_x)
+            y = np.linspace(0.0, 4.0, grid_y)
+            self.xx, self.yy = np.meshgrid(x, y)
 
         #  Aq_tf_s = []
         #  for Aq in self.Aq_s:
@@ -79,15 +82,29 @@ class ForwardSolver:
 
     def train_input_fn(self):
         fin_params = np.zeros((self.batch_size, 6))
-        uh_s = np.zeros((self.batch_size, self.grid_x, self.grid_y))
+
+        if (self.grid_x is None):
+            uh_s = np.zeros((self.batch_size, self.nodes))
+        else:
+            uh_s = np.zeros((self.batch_size, self.grid_x, self.grid_y))
+
         for i in range(self.batch_size):
             fin_params[i,:] = [rand()*8, rand()*8, rand()*8, rand()*8, 1, rand()*2]
-            uh_s[i,:,:] = self.solve(fin_params[i,:])
+
+            if (self.grid_x is None):
+                uh_s[i,:] = self.solve_noiterp(fin_params[i,:])
+            else:
+                uh_s[i,:,:] = self.solve(fin_params[i,:])
         return ({'x':tf.convert_to_tensor(uh_s)}, tf.convert_to_tensor(fin_params))
 
     def eval_input_fn(self):
         fin_params = [rand()*8, rand()*8, rand()*8, rand()*8, 1, rand()*2]
-        uh = self.solve(fin_params)
+
+        if (self.grid_x is None): 
+            uh = np.array([self.solve_noiterp(fin_params)])
+        else:
+            uh = self.solve(fin_params)
+
         return ({'x':tf.convert_to_tensor(uh, dtype=tf.float64)}, 
                 tf.convert_to_tensor(fin_params, dtype=tf.float64))
 

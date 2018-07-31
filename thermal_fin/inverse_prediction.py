@@ -19,7 +19,7 @@ def main(argv):
     train_steps = tf.flags.FLAGS.train_steps
     eval_steps  = tf.flags.FLAGS.eval_steps
 
-    solver = ForwardSolver(grid_x, grid_y, batch_size)
+    solver = ForwardSolver(batch_size, grid_x, grid_y)
 
     config = tf.estimator.RunConfig(save_summary_steps=10, model_dir='inverse_output')
 

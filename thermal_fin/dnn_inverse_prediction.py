@@ -15,17 +15,17 @@ def main(argv):
     train_steps = tf.flags.FLAGS.train_steps
     eval_steps  = tf.flags.FLAGS.eval_steps
 
-    solver = ForwardSolver(grid_x, grid_y, batch_size)
+    solver = ForwardSolver(batch_size)
 
-    config = tf.estimator.RunConfig(save_summary_steps=10, model_dir='inverse_output')
+    config = tf.estimator.RunConfig(save_summary_steps=5, model_dir='out_dnn_inverse')
 
     logging_hook = tf.train.LoggingTensorHook(
         tensors={"loss_c": "l2_loss"}, every_n_iter=5)
 
     inverse_regressor = tf.estimator.Estimator(
         config = config,
-        model_fn=cnn_model, 
-        params={"fin_params": 6, "solver":solver})
+        model_fn=dnn_model, 
+        params={"fin_params": 6, "solver":solver, "nodes":solver.nodes})
 
     inverse_regressor.train(input_fn=solver.train_input_fn,
                             steps=train_steps, hooks=[logging_hook])
@@ -34,7 +34,7 @@ def main(argv):
     print(eval_result)
 
     fin_params = [rand()*8, rand()*8, rand()*8, rand()*8, 1, rand()*2]
-    uh = solver.solve(fin_params)
+    uh = solver.solve_noiterp(fin_params)
 
     pred_input_fn = tf.estimator.inputs.numpy_input_fn(
             x={'x':np.array([uh])}, 
@@ -46,12 +46,16 @@ def main(argv):
     print("Prediction error: {}".format(
         np.linalg.norm(np.array(prediction[0]) - np.array(fin_params))))
 
-def cnn_model(features, labels, mode, params):
+def dnn_model(features, labels, mode, params):
     '''
-    features - This is batch_features from input_fn
-    labels   - This is batch_labels from input_fn
-    mode     - An instance of tf.estimator.ModeKeys, see below
-    params   - Additional configuration
+    Deep Neural Network to map nodal values of temperature to thermal 
+    conductivities. 
+
+    Arguments:
+        features - This is batch_features from input_fn
+        labels   - This is batch_labels from input_fn
+        mode     - An instance of tf.estimator.ModeKeys, see below
+        params   - Additional configuration
     '''
 
     batch_size = tf.flags.FLAGS.batch_size
@@ -60,63 +64,22 @@ def cnn_model(features, labels, mode, params):
     # input_layer shape = [batch_size, height, width, channels]
     # -1 for batch size, which specifies that this dimension should be dynamically
     # computed based on the number of input values in features["x"]
-    input_layer = tf.reshape(features["x"], [-1, params["grid_x"], params["grid_y"], 1])
+    dense1 = tf.layers.dense(features["x"], units=params["nodes"], activation=tf.nn.relu)
 
-    # Convolutional Layer #1
-    conv1 = tf.layers.conv2d(
-        inputs=input_layer,
-        filters=32,
-        kernel_size=[4, 4],
-        padding="same",
-        activation=tf.nn.relu)
-    # Pooling Layer #1
-    pool1 = tf.layers.max_pooling2d(
-        inputs=conv1, pool_size=[4, 4], strides=4)
-    # Output of pool1 is of dim [batch_size, 100, 100, 32]
+    dense2 = tf.layers.dense(dense1, units=params["nodes"], activation=tf.nn.relu)
+    dropout2 = tf.layers.dropout(
+        inputs=dense2, rate=0.02, training=mode == tf.estimator.ModeKeys.TRAIN)
 
-    # Convolutional Layer #2 and Pooling Layer #2
-    conv2 = tf.layers.conv2d(
-        inputs=pool1,
-        filters=32,
-        kernel_size=[4, 4],
-        padding="same",
-        activation=tf.nn.relu)
-    pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[4, 4], strides=4)
-    # Output of pool2 is of dim [batch_size, 25, 25, 32]
-
-    # Convolutional Layer #3 and Pooling Layer #3
-    conv3 = tf.layers.conv2d(
-        inputs=pool2,
-        filters=32,
-        kernel_size=[5, 5],
-        padding="same",
-        activation=tf.nn.relu)
-    pool3 = tf.layers.max_pooling2d(inputs=conv3, pool_size=[5, 5], strides=5)
-    # Output of pool2 is of dim [batch_size, 5, 5, 32]
-
-
-    # Dense Layer with dropout
-    dim_x = int(params["grid_x"]/80)
-    dim_y = int(params["grid_y"]/80)
-
-    pool2_flat = tf.reshape(pool3, [-1, dim_x * dim_y * 32])
-    dense = tf.layers.dense(
-        inputs=pool2_flat, units=800, activation=tf.nn.relu)
-    dropout = tf.layers.dropout(
-        inputs=dense, rate=0.2, training=mode == tf.estimator.ModeKeys.TRAIN)
+    dense3 = tf.layers.dense(dropout2, units=params["nodes"], activation=tf.nn.relu)
+    dropout3 = tf.layers.dropout(
+        inputs=dense3, rate=0.02, training=mode == tf.estimator.ModeKeys.TRAIN)
 
     # Logits Layer
-    logits = tf.layers.dense(inputs=dropout, units=params["fin_params"])
+    logits = tf.layers.dense(inputs=dropout3, units=params["fin_params"])
 
     if mode == tf.estimator.ModeKeys.PREDICT:
         return tf.estimator.EstimatorSpec(mode=mode, predictions=logits)
     
-    #  fin_param_list = tf.unstack(logits)
-
-    #  rs = 0
-    #  for f in fin_param_list:
-        #  rs += solver.tf_solve(f)
-
     # TODO: rewrite this with forwad solve loss
     # Calculate Loss (for both TRAIN and EVAL modes)
     #  loss = tf.losses.mean_squared_error(labels, logits, name="l2_loss")
@@ -127,7 +90,7 @@ def cnn_model(features, labels, mode, params):
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
         #  optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
-        optimizer = tf.train.AdadeltaOptimizer(learning_rate=0.1)
+        optimizer = tf.train.AdadeltaOptimizer(learning_rate=0.2)
         train_op = optimizer.minimize(
             loss=loss,
             global_step=tf.train.get_global_step())
@@ -148,7 +111,7 @@ def cnn_model(features, labels, mode, params):
 if __name__ == "__main__":
     # The Estimator periodically generates "INFO" logs; make these logs visible.
     tf.flags.DEFINE_integer('batch_size', 10, 'Number of images to process in a batch.')
-    tf.flags.DEFINE_integer('train_steps', 400, 'Number of training steps to take.')
-    tf.flags.DEFINE_integer('eval_steps', 100, 'Number of evaluation steps to take.')
+    tf.flags.DEFINE_integer('train_steps', 8000, 'Number of training steps to take.')
+    tf.flags.DEFINE_integer('eval_steps', 10, 'Number of evaluation steps to take.')
     tf.logging.set_verbosity(tf.logging.INFO)
     tf.app.run(main=main)
