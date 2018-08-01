@@ -119,9 +119,10 @@ pip-selfcheck.json
 .DS_Store
 
 # Project specific
-thermal_fin/output
 examples
 *.png
 nohup.out
 thermal_fin_matlab/*.csv
 thermal_fin/inverse_output/
+thermal_fin/out_dnn_inverse/
+thermal_fin/output

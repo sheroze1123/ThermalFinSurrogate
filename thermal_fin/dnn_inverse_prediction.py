@@ -111,7 +111,7 @@ def dnn_model(features, labels, mode, params):
 if __name__ == "__main__":
     # The Estimator periodically generates "INFO" logs; make these logs visible.
     tf.flags.DEFINE_integer('batch_size', 10, 'Number of images to process in a batch.')
-    tf.flags.DEFINE_integer('train_steps', 8000, 'Number of training steps to take.')
+    tf.flags.DEFINE_integer('train_steps', 400, 'Number of training steps to take.')
     tf.flags.DEFINE_integer('eval_steps', 10, 'Number of evaluation steps to take.')
     tf.logging.set_verbosity(tf.logging.INFO)
     tf.app.run(main=main)
