@@ -28,7 +28,7 @@ def main(argv):
 
     inverse_regressor = tf.estimator.Estimator(
         config = config,
-        model_fn=cnn_model_no_pooling,
+        model_fn=cnn_model,
         params={"fin_params": 6, "grid_x": grid_x, "grid_y": grid_y, "solver":solver})
 
     inverse_regressor.train(input_fn=solver.train_input_fn,

@@ -1,0 +1,5 @@
+#!/bin/bash
+[ -e inverse_output ] && rm -r inverse_output
+[ -e output ] && rm -r output
+[ -e out_dnn_inverse ] && rm -r out_dnn_inverse
+[ -e out_surrogate ] && rm -r out_surrogate

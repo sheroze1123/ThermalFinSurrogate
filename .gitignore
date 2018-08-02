@@ -126,3 +126,4 @@ thermal_fin_matlab/*.csv
 thermal_fin/inverse_output/
 thermal_fin/out_dnn_inverse/
 thermal_fin/output
+thermal_fin/out_surrogate/

@@ -21,13 +21,6 @@ class ForwardSolver:
             y = np.linspace(0.0, 4.0, grid_y)
             self.xx, self.yy = np.meshgrid(x, y)
 
-        #  Aq_tf_s = []
-        #  for Aq in self.Aq_s:
-            #  indices = np.mat([Aq.row, Aq.col]).transpose()
-            #  Aq_tf_s.append(tf.SparseTensor(indices, Aq.data, Aq.shape))
-
-        #  self.Aq_s_tf = tf.stack(Aq_tf_s)
-
     def solve(self, params):
         '''
         Performs a forward solve with the given parameters and returns
@@ -70,15 +63,21 @@ class ForwardSolver:
         uh = spsolve(Ah, self.Fh)
         return uh
 
-    #  def tf_solve(self, params):
-        #  #  Ah = coo_matrix((self.nodes, self.nodes))
-        #  #  for param, Aq in zip(params, self.Aq_s):
-            #  #  Ah = Ah + param * Aq
+    def train_input_fn_fwd(self):
+        fin_params = np.zeros((self.batch_size, 6))
+        uh_s = np.zeros((self.batch_size, self.nodes))
 
-        #  Ah = tf.reduce_sum(tf.multiply(tf.expand_dims(params), self.Aq_s_tf), axis=0)
-        #  #  indices = np.mat([Ah.row, Ah.col]).transpose()
-        #  #  Ah_tf = tf.SparseTensor(indices, Ah.data, Ah.shape)
-        #  return 2.0
+        for i in range(self.batch_size):
+            fin_params[i,:] = [rand()*8, rand()*8, rand()*8, rand()*8, 1, rand()*2]
+            uh_s[i,:] = self.solve_noiterp(fin_params[i,:])
+        return ({'x':tf.convert_to_tensor(fin_params)}, tf.convert_to_tensor(uh_s))
+
+    def eval_input_fn_fwd(self):
+        fin_params = [rand()*8, rand()*8, rand()*8, rand()*8, 1, rand()*2]
+        uh = np.array([self.solve_noiterp(fin_params)])
+            
+        return ({'x':tf.convert_to_tensor(np.array([fin_params]), dtype=tf.float64)}, 
+                tf.convert_to_tensor(uh, dtype=tf.float64))
 
     def train_input_fn(self):
         fin_params = np.zeros((self.batch_size, 6))
@@ -139,8 +138,15 @@ class ForwardSolver:
 
         return Aq_s, Fh, nodes, coor, (theta_tri-1).T
 
+    def plot_solution_nointerp(self, uh, filepath):
+        plt.cla()
+        plt.clf()
+        plt.tripcolor(self.triangulation, uh, vmax=1.0)
+        v = np.linspace(0.0, 0.8, 11)
+        plt.colorbar(boundaries=v)
+        plt.savefig(filepath, dpi=400)
+
     def plot_solution(self, uh_interpolated, filepath):
         pl = plt.pcolormesh(self.xx, self.yy, uh_interpolated, linewidth=0.0, rasterized=True)
         pl.set_edgecolor('face')
         plt.savefig(filepath, dpi=400)
-        #  plt.tripcolor(self.triangulation, uh)
