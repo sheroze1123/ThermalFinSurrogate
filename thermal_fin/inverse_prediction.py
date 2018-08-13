@@ -69,7 +69,7 @@ def cnn_model(features, labels, mode, params):
     # Convolutional Layer #1
     conv1 = tf.layers.conv2d(
         inputs=input_layer,
-        filters=32,
+        filters=16,
         kernel_size=[4, 4],
         padding="same",
         activation=tf.nn.relu)
@@ -81,31 +81,33 @@ def cnn_model(features, labels, mode, params):
     # Convolutional Layer #2 and Pooling Layer #2
     conv2 = tf.layers.conv2d(
         inputs=pool1,
-        filters=32,
+        filters=16,
         kernel_size=[4, 4],
         padding="same",
         activation=tf.nn.relu)
-    pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[4, 4], strides=2)
+    pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[8, 8], strides=4)
     # Output of pool2 is of dim [batch_size, 100, 100, 32]
 
     # Convolutional Layer #3 and Pooling Layer #3
     conv3 = tf.layers.conv2d(
         inputs=pool2,
-        filters=32,
+        filters=16,
         kernel_size=[5, 5],
         padding="same",
         activation=tf.nn.relu)
-    pool3 = tf.layers.max_pooling2d(inputs=conv3, pool_size=[4, 4], strides=2)
-    # Output of pool2 is of dim [batch_size, 5, 5, 32]
+    pool3 = tf.layers.max_pooling2d(inputs=conv3, pool_size=[8, 8], strides=4)
+    # Output of pool2 is of dim [batch_size, 50, 50, 32]
 
 
     # Dense Layer with dropout
-    dim_x = int(params["grid_x"]/80)
-    dim_y = int(params["grid_y"]/80)
+    #  dim_x = int(params["grid_x"]/8)
+    #  dim_y = int(params["grid_y"]/8)
+    dim_x = 11
+    dim_y = 11
 
-    pool2_flat = tf.reshape(pool3, [-1, dim_x * dim_y * 32])
+    pool2_flat = tf.reshape(pool3, [-1, dim_x * dim_y * 16])
     dense = tf.layers.dense(
-        inputs=pool2_flat, units=800, activation=tf.nn.relu)
+        inputs=pool2_flat, units=1000, activation=tf.nn.relu)
     dropout = tf.layers.dropout(
         inputs=dense, rate=0.2, training=mode == tf.estimator.ModeKeys.TRAIN)
 
@@ -121,11 +123,13 @@ def cnn_model(features, labels, mode, params):
     #  for f in fin_param_list:
         #  rs += solver.tf_solve(f)
 
+    beta = 0.1
+
     # TODO: rewrite this with forwad solve loss
     # Calculate Loss (for both TRAIN and EVAL modes)
     #  loss = tf.losses.mean_squared_error(labels, logits, name="l2_loss")
     loss = tf.reduce_mean(tf.squared_difference(
-        labels, logits), name='l2_loss')
+        labels, logits), name='l2_loss') / batch_size  + beta * tf.norm(logits)
     #  loss =  solver.tf_solve(fin_param_list[0])
 
     # Configure the Training Op (for TRAIN mode)
